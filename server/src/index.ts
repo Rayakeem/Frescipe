@@ -3,9 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import dotenv from 'dotenv';
+import passport from './config/passport';
 import { connectDB } from './config/database';
 import { initializeDatabase } from './models';
+import authRoutes from './routes/auth';
 // import { errorHandler } from './middleware/errorHandler';
 
 // 환경 변수 로드
@@ -24,6 +28,22 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+// 세션 설정 (Passport 세션용)
+app.use(session({
+  secret: process.env['COOKIE_SECRET'] || 'fallback-session-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env['NODE_ENV'] === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24시간
+  }
+}));
+
+// Passport 초기화
+app.use(passport.initialize());
+app.use(passport.session());
 
 // 헬스 체크 엔드포인트
 app.get('/health', (_req: express.Request, res: express.Response) => {
@@ -34,11 +54,18 @@ app.get('/health', (_req: express.Request, res: express.Response) => {
   });
 });
 
+// 인증 라우트
+app.use('/auth', authRoutes);
+
 // API 라우트 (추후 추가 예정)
 app.get('/api', (_req: express.Request, res: express.Response) => {
   res.json({
     message: 'Frescipe API 서버',
-    version: '1.0.0'
+    version: '1.0.0',
+    endpoints: {
+      auth: '/auth',
+      health: '/health'
+    }
   });
 });
 

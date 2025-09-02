@@ -1,23 +1,57 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, Avatar, List, Divider } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../store/authStore';
+import { theme } from '../utils/theme';
 
 export const ProfileScreen = () => {
+  const { user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    Alert.alert(
+      '로그아웃',
+      '정말 로그아웃하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+        },
+        {
+          text: '로그아웃',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              console.error('로그아웃 오류:', error);
+              Alert.alert('오류', '로그아웃 중 오류가 발생했습니다.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.profileHeader}>
-          <Avatar.Text 
-            size={80} 
-            label="김" 
+          <Avatar.Image
+            size={80}
+            source={{
+              uri: user?.profileImage || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+            }}
             style={styles.avatar}
           />
           <Text variant="headlineSmall" style={styles.name}>
-            김소희
+            {user?.displayName || '사용자'}
           </Text>
           <Text variant="bodyMedium" style={styles.email}>
-            sohee@example.com
+            {user?.email || 'user@example.com'}
+          </Text>
+          <Text variant="bodySmall" style={styles.level}>
+            🌟 {user?.level || '요리 초보자'} • {user?.experiencePoints || 0}XP
           </Text>
           <Button 
             mode="outlined" 
@@ -49,7 +83,7 @@ export const ProfileScreen = () => {
               </View>
               <View style={styles.statItem}>
                 <Text variant="headlineMedium" style={styles.statNumber}>
-                  128
+                  8
                 </Text>
                 <Text variant="bodySmall" style={styles.statLabel}>
                   팔로워
@@ -60,71 +94,100 @@ export const ProfileScreen = () => {
         </Card>
 
         <Card style={styles.menuCard}>
-          <List.Item
-            title="내가 작성한 레시피"
-            description="12개의 레시피"
-            left={(props) => <List.Icon {...props} icon="chef-hat" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('내 레시피')}
-          />
-          <Divider />
-          <List.Item
-            title="저장한 레시피"
-            description="45개의 레시피"
-            left={(props) => <List.Icon {...props} icon="bookmark" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('저장한 레시피')}
-          />
-          <Divider />
-          <List.Item
-            title="팔로잉"
-            description="23명"
-            left={(props) => <List.Icon {...props} icon="account-group" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('팔로잉')}
-          />
+          <Card.Content>
+            <List.Item
+              title="내 레시피"
+              description="작성한 레시피 관리"
+              left={props => <List.Icon {...props} icon="book-open-variant" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('내 레시피')}
+            />
+            <Divider />
+            <List.Item
+              title="저장한 레시피"
+              description="북마크한 레시피 모음"
+              left={props => <List.Icon {...props} icon="bookmark" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('저장한 레시피')}
+            />
+            <Divider />
+            <List.Item
+              title="냉장고 관리"
+              description="재료 및 유통기한 관리"
+              left={props => <List.Icon {...props} icon="fridge" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('냉장고 관리')}
+            />
+          </Card.Content>
         </Card>
 
         <Card style={styles.menuCard}>
-          <List.Item
-            title="알림 설정"
-            left={(props) => <List.Icon {...props} icon="bell" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('알림 설정')}
-          />
-          <Divider />
-          <List.Item
-            title="개인정보 보호"
-            left={(props) => <List.Icon {...props} icon="shield-account" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('개인정보 보호')}
-          />
-          <Divider />
-          <List.Item
-            title="고객 지원"
-            left={(props) => <List.Icon {...props} icon="help-circle" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('고객 지원')}
-          />
-          <Divider />
-          <List.Item
-            title="앱 정보"
-            left={(props) => <List.Icon {...props} icon="information" />}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-            onPress={() => console.log('앱 정보')}
-          />
+          <Card.Content>
+            <List.Item
+              title="알림 설정"
+              description="푸시 알림 및 이메일 설정"
+              left={props => <List.Icon {...props} icon="bell" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('알림 설정')}
+            />
+            <Divider />
+            <List.Item
+              title="개인정보 설정"
+              description="계정 및 개인정보 관리"
+              left={props => <List.Icon {...props} icon="account-cog" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('개인정보 설정')}
+            />
+            <Divider />
+            <List.Item
+              title="도움말"
+              description="자주 묻는 질문 및 가이드"
+              left={props => <List.Icon {...props} icon="help-circle" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('도움말')}
+            />
+            <Divider />
+            <List.Item
+              title="고객센터"
+              description="문의 및 지원"
+              left={props => <List.Icon {...props} icon="headset" />}
+              right={props => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => console.log('고객센터')}
+            />
+          </Card.Content>
         </Card>
 
-        <View style={styles.logoutContainer}>
-          <Button 
-            mode="outlined" 
-            textColor="#F44336"
-            style={[styles.logoutButton, { borderColor: '#F44336' }]}
-            onPress={() => console.log('로그아웃')}
-          >
-            로그아웃
-          </Button>
-        </View>
+        <Card style={styles.menuCard}>
+          <Card.Content>
+            <List.Item
+              title="로그아웃"
+              description="계정에서 로그아웃"
+              left={props => <List.Icon {...props} icon="logout" color="#F44336" />}
+              titleStyle={styles.logoutText}
+              onPress={handleLogout}
+            />
+          </Card.Content>
+        </Card>
+
+        {/* 계정 정보 */}
+        {user && (
+          <Card style={styles.accountInfoCard}>
+            <Card.Content>
+              <Text variant="titleSmall" style={styles.accountInfoTitle}>
+                계정 정보
+              </Text>
+              <Text variant="bodySmall" style={styles.accountInfoText}>
+                가입일: {new Date(user.createdAt).toLocaleDateString('ko-KR')}
+              </Text>
+              <Text variant="bodySmall" style={styles.accountInfoText}>
+                인증 상태: {user.isVerified ? '✅ 인증됨' : '❌ 미인증'}
+              </Text>
+              <Text variant="bodySmall" style={styles.accountInfoText}>
+                멤버십: {user.isPremium ? '🌟 프리미엄' : '🆓 기본'}
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -133,33 +196,38 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#f5f5f5',
   },
   scrollView: {
     flex: 1,
   },
   profileHeader: {
     alignItems: 'center',
-    padding: 30,
-    backgroundColor: '#FFFFFF',
+    padding: 20,
+    backgroundColor: 'white',
+    marginBottom: 10,
   },
   avatar: {
-    backgroundColor: '#2E7D32',
     marginBottom: 15,
   },
   name: {
     fontWeight: 'bold',
     marginBottom: 5,
+    color: theme.colors.primary,
   },
   email: {
     color: '#666',
-    marginBottom: 20,
+    marginBottom: 5,
+  },
+  level: {
+    color: '#888',
+    marginBottom: 15,
   },
   editButton: {
-    borderColor: '#2E7D32',
+    marginTop: 10,
   },
   statsCard: {
-    margin: 20,
+    margin: 10,
     marginBottom: 10,
   },
   statsContainer: {
@@ -171,21 +239,31 @@ const styles = StyleSheet.create({
   },
   statNumber: {
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: theme.colors.primary,
   },
   statLabel: {
     color: '#666',
     marginTop: 5,
   },
   menuCard: {
-    margin: 20,
-    marginTop: 10,
+    margin: 10,
+    marginBottom: 10,
   },
-  logoutContainer: {
-    padding: 20,
-    paddingTop: 10,
+  logoutText: {
+    color: '#F44336',
+    fontWeight: '600',
   },
-  logoutButton: {
-    marginTop: 10,
+  accountInfoCard: {
+    margin: 10,
+    marginBottom: 20,
+  },
+  accountInfoTitle: {
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: theme.colors.primary,
+  },
+  accountInfoText: {
+    color: '#666',
+    marginBottom: 5,
   },
 });
