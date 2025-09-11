@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
 import { LoginScreen } from '../screens/LoginScreen';
+import AuthCallbackScreen from '../screens/AuthCallbackScreen';
+import { URLConfig } from '../config/urls';
 import { theme } from '../utils/theme';
 
 interface AuthGuardProps {
@@ -51,6 +53,14 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     );
   }
 
+  // 웹에서 OAuth 콜백 처리
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const currentPath = window.location.pathname;
+    if (currentPath === URLConfig.OAUTH_REDIRECT_URIS.web.callback) {
+      return <AuthCallbackScreen />;
+    }
+  }
+
   // 인증되지 않은 경우 로그인 화면 표시
   if (!isAuthenticated || !user) {
     return <LoginScreen />;
@@ -92,3 +102,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

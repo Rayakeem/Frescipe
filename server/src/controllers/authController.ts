@@ -37,7 +37,7 @@ export class AuthController {
       });
 
       // 클라이언트로 리다이렉트 (토큰 정보와 함께)
-      const redirectUrl = new URL('/auth/success', process.env['CORS_ORIGIN'] || 'http://localhost:3001');
+      const redirectUrl = new URL('/auth/success', process.env['CORS_ORIGIN']);
       redirectUrl.searchParams.set('token', loginResponse.tokens.accessToken);
       redirectUrl.searchParams.set('user', JSON.stringify(loginResponse.user));
 

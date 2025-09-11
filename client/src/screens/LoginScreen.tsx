@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { Button, Card, ActivityIndicator } from 'react-native-paper';
 import { useAuthStore } from '../store/authStore';
-import { AuthService, SocialProvider } from '../services/authService';
+import { AuthService } from '../services/authService';
+import { SocialProvider } from '../config/urls';
 import { theme } from '../utils/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -63,6 +64,36 @@ export const LoginScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
       setLoadingProvider(null);
+    }
+  };
+
+  const handleTestLogin = async () => {
+    try {
+      setIsLoading(true);
+      clearError();
+      
+      const result = await AuthService.testLogin();
+      
+      if (result.success) {
+        await login(
+          result.user,
+          result.tokens.accessToken,
+          result.tokens.refreshToken
+        );
+        
+        Alert.alert(
+          '테스트 로그인 성공! 🧪',
+          `${result.user.displayName}님으로 로그인되었습니다!`,
+          [{ text: '확인' }]
+        );
+      } else {
+        throw new Error('테스트 로그인에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('테스트 로그인 오류:', error);
+      setError(error instanceof Error ? error.message : '테스트 로그인에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,7 +187,19 @@ export const LoginScreen: React.FC = () => {
 
           {/* 소셜 로그인 버튼들 */}
           <View style={styles.socialButtonsContainer}>
-            {(['google', 'kakao', 'naver'] as SocialProvider[]).map(renderSocialButton)}
+            {(['kakao', 'naver'] as SocialProvider[]).map(renderSocialButton)}
+            
+            {/* 테스트 로그인 버튼 (개발 환경 전용) */}
+            <TouchableOpacity
+              style={[styles.socialButton, { backgroundColor: '#9C27B0' }]}
+              onPress={handleTestLogin}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonIcon}>🧪</Text>
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                테스트 로그인
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* 이용약관 */}
@@ -278,6 +321,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginRight: 12,
   },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   socialButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -312,3 +359,4 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
 });
+

@@ -1,20 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as KakaoStrategy } from 'passport-kakao';
 import { Strategy as NaverStrategy } from 'passport-naver-v2';
 import { User, SocialProvider, UserLevel } from '../models/User';
 import { Types } from 'mongoose';
-
-// 환경 변수 검증
-const requiredEnvVars = {
-  google: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'],
-  kakao: ['KAKAO_CLIENT_ID', 'KAKAO_CLIENT_SECRET'],
-  naver: ['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET']
-};
-
-const checkEnvVars = (provider: keyof typeof requiredEnvVars): boolean => {
-  return requiredEnvVars[provider].every(envVar => process.env[envVar]);
-};
 
 /**
  * 소셜 로그인 사용자 정보 처리 공통 함수
@@ -168,8 +160,9 @@ const generateUniqueUsername = async (displayName: string, email: string): Promi
 };
 
 /**
- * Google OAuth 전략
+ * Google OAuth 전략 (임시 주석 처리)
  */
+/*
 if (checkEnvVars('google')) {
   passport.use(new GoogleStrategy({
     clientID: process.env['GOOGLE_CLIENT_ID']!,
@@ -193,65 +186,58 @@ if (checkEnvVars('google')) {
 } else {
   console.warn('⚠️ Google OAuth 환경 변수가 설정되지 않았습니다.');
 }
+*/
 
 /**
  * Kakao OAuth 전략
  */
-if (checkEnvVars('kakao')) {
-  passport.use(new KakaoStrategy({
-    clientID: process.env['KAKAO_CLIENT_ID']!,
-    clientSecret: process.env['KAKAO_CLIENT_SECRET']!,
-    callbackURL: process.env['KAKAO_CALLBACK_URL'] || '/auth/kakao/callback'
-  }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      const kakaoAccount = profile._json?.kakao_account;
-      const kakaoProfile = kakaoAccount?.profile;
-      
-      const user = await handleSocialUser(
-        SocialProvider.KAKAO,
-        profile.id,
-        kakaoAccount?.email || '',
-        kakaoProfile?.nickname || 'Kakao User',
-        kakaoProfile?.profile_image_url
-      );
-      
-      return done(null, user);
-    } catch (error) {
-      return done(error, undefined);
-    }
-  }));
-} else {
-  console.warn('⚠️ Kakao OAuth 환경 변수가 설정되지 않았습니다.');
-}
+passport.use(new KakaoStrategy({
+  clientID: process.env['KAKAO_CLIENT_ID']!,
+  clientSecret: process.env['KAKAO_CLIENT_SECRET']!,
+  callbackURL: process.env['KAKAO_CALLBACK_URL'] || '/auth/kakao/callback'
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const kakaoAccount = profile._json?.kakao_account;
+    const kakaoProfile = kakaoAccount?.profile;
+    
+    const user = await handleSocialUser(
+      SocialProvider.KAKAO,
+      profile.id,
+      kakaoAccount?.email || '',
+      kakaoProfile?.nickname || 'Kakao User',
+      kakaoProfile?.profile_image_url
+    );
+    
+    return done(null, user);
+  } catch (error) {
+    return done(error, undefined);
+  }
+}));
 
 /**
  * Naver OAuth 전략
  */
-if (checkEnvVars('naver')) {
-  passport.use(new NaverStrategy({
-    clientID: process.env['NAVER_CLIENT_ID']!,
-    clientSecret: process.env['NAVER_CLIENT_SECRET']!,
-    callbackURL: process.env['NAVER_CALLBACK_URL'] || '/auth/naver/callback'
-  }, async (accessToken, refreshToken, profile, done) => {
-    try {
-      const naverProfile = profile._json?.response;
-      
-      const user = await handleSocialUser(
-        SocialProvider.NAVER,
-        naverProfile?.id || profile.id,
-        naverProfile?.email || '',
-        naverProfile?.nickname || naverProfile?.name || 'Naver User',
-        naverProfile?.profile_image
-      );
-      
-      return done(null, user);
-    } catch (error) {
-      return done(error, undefined);
-    }
-  }));
-} else {
-  console.warn('⚠️ Naver OAuth 환경 변수가 설정되지 않았습니다.');
-}
+passport.use(new NaverStrategy({
+  clientID: process.env['NAVER_CLIENT_ID']!,
+  clientSecret: process.env['NAVER_CLIENT_SECRET']!,
+  callbackURL: process.env['NAVER_CALLBACK_URL'] || '/auth/naver/callback'
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const naverProfile = profile._json?.response;
+    
+    const user = await handleSocialUser(
+      SocialProvider.NAVER,
+      naverProfile?.id || profile.id,
+      naverProfile?.email || '',
+      naverProfile?.nickname || naverProfile?.name || 'Naver User',
+      naverProfile?.profile_image
+    );
+    
+    return done(null, user);
+  } catch (error) {
+    return done(error, undefined);
+  }
+}));
 
 /**
  * Passport 직렬화/역직렬화

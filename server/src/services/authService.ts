@@ -340,4 +340,81 @@ export class AuthService {
       throw new Error('계정 삭제 중 오류가 발생했습니다.');
     }
   }
+
+  /**
+   * 테스트용 사용자 생성 (개발 환경 전용)
+   */
+  static async createTestUser(): Promise<any> {
+    try {
+      // 기존 테스트 사용자 확인
+      let testUser = await User.findOne({ 
+        'socialAccounts.providerId': 'test-user-id',
+        'socialAccounts.provider': 'naver'
+      });
+
+      if (testUser) {
+        return testUser;
+      }
+
+      // 새 테스트 사용자 생성
+      testUser = new User({
+        email: 'test@frescipe.com',
+        username: 'testuser',
+        displayName: '테스트 사용자',
+        profileImage: 'https://via.placeholder.com/150',
+        bio: '테스트용 계정입니다.',
+        primaryProvider: 'naver',
+        socialAccounts: [{
+          provider: 'naver',
+          providerId: 'test-user-id',
+          email: 'test@frescipe.com',
+          profileUrl: 'https://via.placeholder.com/150',
+          connectedAt: new Date(),
+          lastUsedAt: new Date()
+        }],
+        stats: {
+          totalRecipes: 0,
+          totalLikes: 0,
+          totalFollowers: 0,
+          totalFollowing: 0,
+          totalCookingTime: 0,
+          experiencePoints: 100,
+          level: 'beginner',
+          badges: ['new_user', 'test_user'],
+          streakDays: 0
+        },
+        settings: {
+          notifications: {
+            recipeRecommendations: true,
+            expiryReminders: true,
+            socialActivity: true,
+            weeklyReport: true,
+            pushEnabled: true,
+            emailEnabled: true
+          },
+          privacy: {
+            profileVisibility: 'public',
+            recipeVisibility: 'public',
+            fridgeVisibility: 'friends',
+            allowFollowRequests: true,
+            showOnlineStatus: true
+          },
+          preferences: {
+            language: 'ko',
+            theme: 'light',
+            units: 'metric',
+            timezone: 'Asia/Seoul'
+          }
+        }
+      });
+
+      await testUser.save();
+      console.log('✅ 테스트 사용자 생성 완료');
+      
+      return testUser;
+    } catch (error) {
+      console.error('테스트 사용자 생성 오류:', error);
+      throw new Error('테스트 사용자 생성에 실패했습니다.');
+    }
+  }
 }

@@ -38,66 +38,85 @@ export interface AuthState {
 
 // 토큰을 안전하게 저장하는 함수
 const storeTokensSecurely = async (accessToken: string, refreshToken: string) => {
+  // 먼저 AsyncStorage에 저장 (더 안정적)
   try {
-    await Keychain.setInternetCredentials(
-      'frescipe_tokens',
-      'access_token',
-      accessToken
-    );
-    await Keychain.setInternetCredentials(
-      'frescipe_refresh_tokens',
-      'refresh_token',
-      refreshToken
-    );
-  } catch (error) {
-    console.error('토큰 저장 실패:', error);
-    // Keychain 실패 시 AsyncStorage로 폴백
     await AsyncStorage.setItem('accessToken', accessToken);
     await AsyncStorage.setItem('refreshToken', refreshToken);
+  } catch (error) {
+    console.error('AsyncStorage 토큰 저장 실패:', error);
+  }
+
+  // Keychain에도 저장 시도 (선택적)
+  try {
+    if (Keychain && typeof Keychain.setInternetCredentials === 'function') {
+      await Keychain.setInternetCredentials(
+        'frescipe_tokens',
+        'access_token',
+        accessToken
+      );
+      await Keychain.setInternetCredentials(
+        'frescipe_refresh_tokens',
+        'refresh_token',
+        refreshToken
+      );
+    }
+  } catch (error) {
+    console.warn('Keychain 저장 실패, AsyncStorage 사용:', error.message);
   }
 };
 
 // 토큰을 안전하게 불러오는 함수
 const getStoredTokens = async (): Promise<{ accessToken: string | null; refreshToken: string | null }> => {
-  try {
-    const accessTokenCreds = await Keychain.getInternetCredentials('frescipe_tokens');
-    const refreshTokenCreds = await Keychain.getInternetCredentials('frescipe_refresh_tokens');
-    
-    if (accessTokenCreds && refreshTokenCreds) {
-      return {
-        accessToken: accessTokenCreds.password,
-        refreshToken: refreshTokenCreds.password
-      };
-    }
-  } catch (error) {
-    console.error('Keychain에서 토큰 불러오기 실패:', error);
-  }
-
-  // Keychain 실패 시 AsyncStorage에서 시도
+  // 먼저 AsyncStorage에서 시도 (더 안정적)
   try {
     const accessToken = await AsyncStorage.getItem('accessToken');
     const refreshToken = await AsyncStorage.getItem('refreshToken');
-    return { accessToken, refreshToken };
+    if (accessToken && refreshToken) {
+      return { accessToken, refreshToken };
+    }
   } catch (error) {
     console.error('AsyncStorage에서 토큰 불러오기 실패:', error);
-    return { accessToken: null, refreshToken: null };
   }
+
+  // Keychain 시도 (선택적)
+  try {
+    // Keychain이 사용 가능한지 확인
+    if (Keychain && typeof Keychain.getInternetCredentials === 'function') {
+      const accessTokenCreds = await Keychain.getInternetCredentials('frescipe_tokens');
+      const refreshTokenCreds = await Keychain.getInternetCredentials('frescipe_refresh_tokens');
+      
+      if (accessTokenCreds && refreshTokenCreds) {
+        return {
+          accessToken: accessTokenCreds.password,
+          refreshToken: refreshTokenCreds.password
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Keychain 사용 불가, AsyncStorage 사용:', error.message);
+  }
+
+  return { accessToken: null, refreshToken: null };
 };
 
 // 토큰을 안전하게 삭제하는 함수
 const clearStoredTokens = async () => {
-  try {
-    await (Keychain as any).resetInternetCredentials('frescipe_tokens');
-    await (Keychain as any).resetInternetCredentials('frescipe_refresh_tokens');
-  } catch (error) {
-    console.error('Keychain 토큰 삭제 실패:', error);
-  }
-
+  // AsyncStorage에서 삭제
   try {
     await AsyncStorage.removeItem('accessToken');
     await AsyncStorage.removeItem('refreshToken');
   } catch (error) {
     console.error('AsyncStorage 토큰 삭제 실패:', error);
+  }
+
+  // Keychain에서도 삭제 시도 (선택적)
+  try {
+    if (Keychain && typeof Keychain.resetInternetCredentials === 'function') {
+      await Keychain.resetInternetCredentials('frescipe_tokens');
+      await Keychain.resetInternetCredentials('frescipe_refresh_tokens');
+    }
+  } catch (error) {
+    console.warn('Keychain 삭제 실패:', error.message);
   }
 };
 

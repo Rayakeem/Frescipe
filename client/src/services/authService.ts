@@ -1,11 +1,11 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import axios, { AxiosResponse } from 'axios';
+import { URLConfig, getApiUrl, getSocialLoginUrl, getRedirectUri, API_BASE_URL, SocialProvider } from '../config/urls';
 
 // WebBrowser 설정 (OAuth 완료 후 앱으로 돌아오기 위함)
 WebBrowser.maybeCompleteAuthSession();
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export interface LoginResponse {
   success: boolean;
@@ -28,29 +28,20 @@ export interface LoginResponse {
   };
 }
 
-export type SocialProvider = 'google' | 'kakao' | 'naver';
 
 export class AuthService {
   /**
-   * 소셜 로그인 URL 생성
+   * 소셜 로그인 URL 생성 (URLConfig 사용)
    */
   private static getSocialLoginUrl(provider: SocialProvider): string {
-    return `${API_BASE_URL}/auth/${provider}`;
+    return getSocialLoginUrl(provider);
   }
 
   /**
-   * 리다이렉트 URI 생성
+   * 리다이렉트 URI 생성 (URLConfig 사용)
    */
   private static getRedirectUri(): string {
-    if (Platform.OS === 'web') {
-      return `${window.location.origin}/auth/callback`;
-    }
-    
-    // 모바일 앱의 경우 커스텀 스킴 사용
-    return AuthSession.makeRedirectUri({
-      scheme: 'frescipe',
-      path: 'auth/callback'
-    });
+    return getRedirectUri('callback');
   }
 
   /**
@@ -58,16 +49,27 @@ export class AuthService {
    */
   static async loginWithSocial(provider: SocialProvider): Promise<LoginResponse> {
     try {
+      // 웹 환경에서는 직접 브라우저 창으로 이동
+      if (Platform.OS === 'web') {
+        const authUrl = this.getSocialLoginUrl(provider);
+        
+        console.log(`${provider} 로그인 시작 (웹):`, authUrl);
+        
+        // 웹에서는 직접 페이지 이동
+        window.location.href = authUrl;
+        
+        // 이 함수는 페이지 이동으로 인해 여기까지 실행되지 않음
+        throw new Error('페이지 이동 중...');
+      }
+
+      // 모바일 환경
       const redirectUri = this.getRedirectUri();
-      const authUrl = `${this.getSocialLoginUrl(provider)}?redirect_uri=${encodeURIComponent(redirectUri)}`;
+      const authUrl = this.getSocialLoginUrl(provider);
 
       console.log(`${provider} 로그인 시작:`, authUrl);
 
-      // OAuth 세션 시작
-      const result = await (AuthSession as any).startAsync({
-        authUrl,
-        returnUrl: redirectUri
-      });
+      // OAuth 세션 시작 (WebBrowser 사용)
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
       console.log('OAuth 결과:', result);
 
@@ -93,10 +95,10 @@ export class AuthService {
           user: loginData.user,
           tokens: loginData.tokens
         };
-      } else if (result.type === 'error') {
-        throw new Error(`로그인 오류: ${result.errorCode}`);
-      } else {
+      } else if (result.type === 'cancel') {
         throw new Error('로그인이 취소되었습니다.');
+      } else {
+        throw new Error('로그인 중 오류가 발생했습니다.');
       }
     } catch (error) {
       console.error(`${provider} 로그인 실패:`, error);
@@ -109,7 +111,7 @@ export class AuthService {
    */
   private static async getLoginData(accessToken: string): Promise<LoginResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      const response = await fetch(getApiUrl('/auth/me'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -143,7 +145,7 @@ export class AuthService {
    */
   static async refreshToken(refreshToken: string): Promise<{ accessToken: string; expiresIn: number }> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const response = await fetch(getApiUrl('/auth/refresh'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -265,7 +267,7 @@ export class AuthService {
    */
   static async checkAuthStatus(accessToken: string): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      const response = await fetch(getApiUrl('/auth/me'), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -277,6 +279,21 @@ export class AuthService {
     } catch (error) {
       console.error('인증 상태 확인 실패:', error);
       return false;
+    }
+  }
+
+  /**
+   * 테스트 로그인 (개발 환경 전용)
+   */
+  static async testLogin(): Promise<LoginResponse> {
+    try {
+      const response: AxiosResponse<LoginResponse> = await axios.post(getApiUrl('/auth/test-login'), {}, {
+        withCredentials: true
+      });
+      return response.data;
+    } catch (error) {
+      console.error('테스트 로그인 오류:', error);
+      throw new Error('테스트 로그인에 실패했습니다.');
     }
   }
 }
